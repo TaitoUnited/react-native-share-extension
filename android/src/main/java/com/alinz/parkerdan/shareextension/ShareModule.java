@@ -48,21 +48,27 @@ public class ShareModule extends ReactContextBaseJavaModule {
 
       if (currentActivity != null) {
         Intent intent = currentActivity.getIntent();
+        boolean handled = intent.getBooleanExtra("handled", false);
         action = intent.getAction();
         type = intent.getType();
-        if (type == null) {
-          type = "";
-        }
-        if (Intent.ACTION_SEND.equals(action) && "text/plain".equals(type)) {
-          value = intent.getStringExtra(Intent.EXTRA_TEXT);
-        }
-        else if (Intent.ACTION_SEND.equals(action) && ("image/*".equals(type) || "image/jpeg".equals(type) || "image/png".equals(type) || "image/jpg".equals(type) ) ) {
-          Uri uri = (Uri) intent.getParcelableExtra(Intent.EXTRA_STREAM);
-         value = "file://" + RealPathUtil.getRealPathFromURI(currentActivity, uri);
 
-       } else {
-         value = "";
-       }
+        if (!handled) {
+          if (type == null) {
+            type = "";
+          }
+          if (Intent.ACTION_SEND.equals(action) && "text/plain".equals(type)) {
+            value = intent.getStringExtra(Intent.EXTRA_TEXT);
+          }
+          else if (Intent.ACTION_SEND.equals(action) && ("image/*".equals(type) || "image/jpeg".equals(type) || "image/png".equals(type) || "image/jpg".equals(type) ) ) {
+            Uri uri = (Uri) intent.getParcelableExtra(Intent.EXTRA_STREAM);
+           value = "file://" + RealPathUtil.getRealPathFromURI(currentActivity, uri);
+
+         } else {
+           value = "";
+         }
+
+         intent.putExtra("handled", true);
+        }
       } else {
         value = "";
         type = "";
