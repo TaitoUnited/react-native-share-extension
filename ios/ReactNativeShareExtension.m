@@ -33,6 +33,20 @@ RCT_EXPORT_MODULE();
     }
 
     self.view = rootView;
+
+    [self extractDataFromContext: extensionContext withCallback:^(NSString* val, NSString* contentType, NSException* err) {
+        if(err) {
+            NSLog(@"Share extension exploded %@",err);
+        } else {
+            NSCharacterSet *allowedCharacters = [NSCharacterSet URLQueryAllowedCharacterSet];
+            NSString *scheme = @"gredismartmobi://share?type=";
+            NSString *encodedType = [contentType stringByAddingPercentEncodingWithAllowedCharacters:allowedCharacters];
+            NSString *encodedVal = [val stringByAddingPercentEncodingWithAllowedCharacters:allowedCharacters];
+            NSString *url = [@[scheme, encodedType, @"&value=", encodedVal] componentsJoinedByString:@""];
+
+            [self openScheme:url];
+        }
+    }];
 }
 
 
@@ -41,7 +55,27 @@ RCT_EXPORT_METHOD(close) {
                                   completionHandler:nil];
 }
 
+- (void)openScheme:(NSString *)scheme {
+    UIApplication *application = [UIApplication sharedApplication];
+    NSURL *URL = [NSURL URLWithString:scheme];
+    [application openURL:URL options:@{} completionHandler:^(BOOL success) {
+        if (success) {
+            NSLog(@"Opened %@",scheme);
+        }
+    }];
+}
 
+-(NSArray *)listFileAtPath:(NSString *)path
+{
+    int count;
+
+    NSArray *directoryContent = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:path error:NULL];
+    for (count = 0; count < (int)[directoryContent count]; count++)
+    {
+        NSLog(@"File %d: %@", (count + 1), [directoryContent objectAtIndex:count]);
+    }
+    return directoryContent;
+}
 
 RCT_REMAP_METHOD(data,
                  resolver:(RCTPromiseResolveBlock)resolve
@@ -91,10 +125,18 @@ RCT_REMAP_METHOD(data,
             }];
         } else if (imageProvider) {
             [imageProvider loadItemForTypeIdentifier:IMAGE_IDENTIFIER options:nil completionHandler:^(id<NSSecureCoding> item, NSError *error) {
+                NSError *fError = nil;
                 NSURL *url = (NSURL *)item;
+                NSURL *containerURL = [[[NSFileManager defaultManager] containerURLForSecurityApplicationGroupIdentifier:@"group.com.gredimobile.Share"] URLByAppendingPathComponent:@"Library/Caches"];
+                NSString *filename = [[url absoluteString] lastPathComponent];
+                NSString *destinationUrl = [[containerURL path] stringByAppendingPathComponent:filename];
+                [[NSFileManager defaultManager] copyItemAtPath:[url path] toPath:destinationUrl error:&fError];
+                NSLog(@"Copying image failed %@",fError);
+                NSLog(@"Shared container data:%@",[self listFileAtPath:[[[[NSFileManager defaultManager] containerURLForSecurityApplicationGroupIdentifier:@"group.com.gredimobile.Share"] path] stringByAppendingPathComponent:@"Library/Caches"]]);
+                NSString *newUrl = [[containerURL absoluteString] stringByAppendingPathComponent:filename];
 
                 if(callback) {
-                    callback([url absoluteString], [[[url absoluteString] pathExtension] lowercaseString], nil);
+                    callback(newUrl, [[[url absoluteString] pathExtension] lowercaseString], nil);
                 }
             }];
         } else if (textProvider) {
