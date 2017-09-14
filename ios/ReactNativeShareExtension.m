@@ -117,23 +117,37 @@ RCT_REMAP_METHOD(data,
 
         if(urlProvider) {
             [urlProvider loadItemForTypeIdentifier:URL_IDENTIFIER options:nil completionHandler:^(id<NSSecureCoding> item, NSError *error) {
+                NSLog(@"URL PROVIDER");
+                NSError *fError = nil;
                 NSURL *url = (NSURL *)item;
 
+                NSLog(@"Item url %@",url);
+                NSURL *containerURL = [[[NSFileManager defaultManager] containerURLForSecurityApplicationGroupIdentifier:@"group.com.gredimobile.Share"] URLByAppendingPathComponent:@"Library/Caches"];
+                NSString *filename = [[url absoluteString] lastPathComponent];
+                NSString *destinationUrl = [[containerURL path] stringByAppendingPathComponent:filename];
+                [[NSFileManager defaultManager] copyItemAtPath:[url path] toPath:destinationUrl error:&fError];
+                NSLog(@"Copying file failed %@",fError);
+                NSLog(@"Shared container data:%@",[self listFileAtPath:[[[[NSFileManager defaultManager] containerURLForSecurityApplicationGroupIdentifier:@"group.com.gredimobile.Share"] path] stringByAppendingPathComponent:@"Library/Caches"]]);
+                NSString *newUrl = [[containerURL path] stringByAppendingPathComponent:filename];
+
                 if(callback) {
-                    callback([url absoluteString], @"text/plain", nil);
+                    callback(newUrl, [[[url absoluteString] pathExtension] lowercaseString], nil);
                 }
+
             }];
         } else if (imageProvider) {
             [imageProvider loadItemForTypeIdentifier:IMAGE_IDENTIFIER options:nil completionHandler:^(id<NSSecureCoding> item, NSError *error) {
+                NSLog(@"IMAGE PROVIDER");
                 NSError *fError = nil;
                 NSURL *url = (NSURL *)item;
+                NSLog(@"Item url %@",url);
                 NSURL *containerURL = [[[NSFileManager defaultManager] containerURLForSecurityApplicationGroupIdentifier:@"group.com.gredimobile.Share"] URLByAppendingPathComponent:@"Library/Caches"];
                 NSString *filename = [[url absoluteString] lastPathComponent];
                 NSString *destinationUrl = [[containerURL path] stringByAppendingPathComponent:filename];
                 [[NSFileManager defaultManager] copyItemAtPath:[url path] toPath:destinationUrl error:&fError];
                 NSLog(@"Copying image failed %@",fError);
                 NSLog(@"Shared container data:%@",[self listFileAtPath:[[[[NSFileManager defaultManager] containerURLForSecurityApplicationGroupIdentifier:@"group.com.gredimobile.Share"] path] stringByAppendingPathComponent:@"Library/Caches"]]);
-                NSString *newUrl = [[containerURL absoluteString] stringByAppendingPathComponent:filename];
+                NSString *newUrl = [[containerURL path] stringByAppendingPathComponent:filename];
 
                 if(callback) {
                     callback(newUrl, [[[url absoluteString] pathExtension] lowercaseString], nil);
