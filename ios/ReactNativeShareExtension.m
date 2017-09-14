@@ -4,6 +4,7 @@
 
 #define URL_IDENTIFIER @"public.url"
 #define IMAGE_IDENTIFIER @"public.image"
+#define MOVIE_IDENTIFIER @"public.movie"
 #define TEXT_IDENTIFIER (NSString *)kUTTypePlainText
 
 NSExtensionContext* extensionContext;
@@ -101,6 +102,7 @@ RCT_REMAP_METHOD(data,
         __block NSItemProvider *urlProvider = nil;
         __block NSItemProvider *imageProvider = nil;
         __block NSItemProvider *textProvider = nil;
+        __block NSItemProvider *movieProvider = nil;
 
         [attachments enumerateObjectsUsingBlock:^(NSItemProvider *provider, NSUInteger idx, BOOL *stop) {
             if([provider hasItemConformingToTypeIdentifier:URL_IDENTIFIER]) {
@@ -111,6 +113,9 @@ RCT_REMAP_METHOD(data,
                 *stop = YES;
             } else if ([provider hasItemConformingToTypeIdentifier:IMAGE_IDENTIFIER]){
                 imageProvider = provider;
+                *stop = YES;
+            } else if ([provider hasItemConformingToTypeIdentifier:MOVIE_IDENTIFIER]){
+                movieProvider = provider;
                 *stop = YES;
             }
         }];
@@ -159,6 +164,24 @@ RCT_REMAP_METHOD(data,
 
                 if(callback) {
                     callback(text, @"text/plain", nil);
+                }
+            }];
+        } else if (movieProvider) {
+            [movieProvider loadItemForTypeIdentifier:MOVIE_IDENTIFIER options:nil completionHandler:^(id<NSSecureCoding> item, NSError *error) {
+                NSLog(@"MOVIE PROVIDER");
+                NSError *fError = nil;
+                NSURL *url = (NSURL *)item;
+                NSLog(@"Item url %@",url);
+                NSURL *containerURL = [[[NSFileManager defaultManager] containerURLForSecurityApplicationGroupIdentifier:@"group.com.gredimobile.Share"] URLByAppendingPathComponent:@"Library/Caches"];
+                NSString *filename = [[url absoluteString] lastPathComponent];
+                NSString *destinationUrl = [[containerURL path] stringByAppendingPathComponent:filename];
+                [[NSFileManager defaultManager] copyItemAtPath:[url path] toPath:destinationUrl error:&fError];
+                NSLog(@"Copying movie failed %@",fError);
+                NSLog(@"Shared container data:%@",[self listFileAtPath:[[[[NSFileManager defaultManager] containerURLForSecurityApplicationGroupIdentifier:@"group.com.gredimobile.Share"] path] stringByAppendingPathComponent:@"Library/Caches"]]);
+                NSString *newUrl = [[containerURL path] stringByAppendingPathComponent:filename];
+
+                if(callback) {
+                    callback(newUrl, [[[url absoluteString] pathExtension] lowercaseString], nil);
                 }
             }];
         } else {
